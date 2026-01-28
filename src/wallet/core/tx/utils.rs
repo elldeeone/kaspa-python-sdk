@@ -93,8 +93,8 @@ pub fn py_create_transaction(
 /// Handles large transfers that may require multiple transactions due to mass limits.
 ///
 /// Args:
-///     network_id: The network to build transactions for.
-///     entries: List of UTXO entries to spend from.
+///     network_id: The network to build transactions for (required for UTXO entries).
+///     entries: UtxoContext or list of UTXO entries to spend from.
 ///     change_address: Address to send change to.
 ///     outputs: Optional list of payment outputs.
 ///     payload: Optional transaction payload data.
@@ -115,8 +115,8 @@ pub fn py_create_transaction(
 #[pyo3(signature = (network_id, entries, change_address, outputs=None, payload=None, fee_rate=None, priority_fee=None, priority_entries=None, sig_op_count=None, minimum_signatures=None))]
 pub fn py_create_transactions<'a>(
     py: Python<'a>,
-    network_id: PyNetworkId,
-    entries: PyUtxoEntries,
+    network_id: Option<PyNetworkId>,
+    #[gen_stub(override_type(type_repr = "UtxoEntries | UtxoContext"))] entries: Bound<'_, PyAny>,
     change_address: PyAddress,
     outputs: Option<PyOutputs>,
     payload: Option<PyBinary>,
@@ -154,8 +154,8 @@ pub fn py_create_transactions<'a>(
 /// Estimate transaction fees and count without creating transactions.
 ///
 /// Args:
-///     network_id: The network to estimate for.
-///     entries: List of UTXO entries to spend from.
+///     network_id: The network to estimate for (required for UTXO entries).
+///     entries: UtxoContext or list of UTXO entries to spend from.
 ///     change_address: Address to send change to.
 ///     outputs: Optional list of payment outputs.
 ///     payload: Optional transaction payload data.
@@ -175,8 +175,8 @@ pub fn py_create_transactions<'a>(
 #[pyo3(name = "estimate_transactions")]
 #[pyo3(signature = (network_id, entries, change_address, outputs=None, payload=None, fee_rate=None, priority_fee=None, priority_entries=None, sig_op_count=None, minimum_signatures=None))]
 pub fn py_estimate_transactions(
-    network_id: PyNetworkId,
-    entries: PyUtxoEntries,
+    network_id: Option<PyNetworkId>,
+    #[gen_stub(override_type(type_repr = "UtxoEntries | UtxoContext"))] entries: Bound<'_, PyAny>,
     change_address: PyAddress,
     outputs: Option<PyOutputs>,
     payload: Option<PyBinary>,
