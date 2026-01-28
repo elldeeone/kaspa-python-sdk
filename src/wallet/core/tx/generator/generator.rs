@@ -132,14 +132,13 @@ impl PyGenerator {
     /// Raises:
     ///     Exception: If generator creation fails.
     #[new]
-    #[pyo3(signature = (network_id, entries, change_address, outputs=None, payload=None, fee_rate=None, priority_fee=None, priority_entries=None, sig_op_count=None, minimum_signatures=None))]
+    #[pyo3(signature = (network_id=None, entries=None, change_address=None, outputs=None, payload=None, fee_rate=None, priority_fee=None, priority_entries=None, sig_op_count=None, minimum_signatures=None))]
     pub fn ctor(
         network_id: Option<PyNetworkId>,
-        #[gen_stub(override_type(type_repr = "UtxoEntries | UtxoContext"))] entries: Bound<
-            '_,
-            PyAny,
+        #[gen_stub(override_type(type_repr = "UtxoEntries | UtxoContext"))] entries: Option<
+            Bound<'_, PyAny>,
         >,
-        change_address: PyAddress,
+        change_address: Option<PyAddress>,
         outputs: Option<PyOutputs>,
         payload: Option<PyBinary>,
         fee_rate: Option<f64>,
@@ -149,6 +148,8 @@ impl PyGenerator {
         minimum_signatures: Option<u16>,
     ) -> PyResult<Self> {
         let source = parse_generator_source(entries)?;
+        let change_address = change_address
+            .ok_or_else(|| PyException::new_err("changeAddress is required for Generator"))?;
         let settings = GeneratorSettings::new(
             outputs,
             change_address.into(),
@@ -285,7 +286,9 @@ impl PyGenerator {
     }
 }
 
-fn parse_generator_source(entries: Bound<'_, PyAny>) -> PyResult<GeneratorSource> {
+fn parse_generator_source(entries: Option<Bound<'_, PyAny>>) -> PyResult<GeneratorSource> {
+    let entries = entries.ok_or_else(|| PyException::new_err("entries is required"))?;
+
     if let Ok(context) = entries.extract::<PyUtxoContext>() {
         Ok(GeneratorSource::UtxoContext(context.into()))
     } else if let Ok(entries) = entries.extract::<PyUtxoEntries>() {
