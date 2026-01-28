@@ -107,6 +107,7 @@ impl PyUtxoContext {
                 .clear()
                 .await
                 .map_err(|err| PyException::new_err(err.to_string()))?;
+            purge_processor_pending(&context);
             Ok(())
         })
     }
@@ -197,6 +198,19 @@ impl PyUtxoContext {
 impl From<PyUtxoContext> for UtxoContext {
     fn from(value: PyUtxoContext) -> Self {
         value.0
+    }
+}
+
+fn purge_processor_pending(context: &UtxoContext) {
+    let context_id = context.id();
+    let pending = context.processor().pending();
+    let keys = pending
+        .iter()
+        .filter(|entry| entry.value().utxo_context().id() == context_id)
+        .map(|entry| entry.key().clone())
+        .collect::<Vec<_>>();
+    for key in keys {
+        pending.remove(&key);
     }
 }
 
