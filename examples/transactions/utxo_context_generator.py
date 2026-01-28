@@ -21,11 +21,31 @@ async def main():
     client = RpcClient(resolver=Resolver(), network_id=TESTNET_ID)
     await client.connect()
 
+    server_info = await client.get_server_info()
+    if not server_info.get("isSynced"):
+        print("Node is not synced yet.")
+        await client.disconnect()
+        return
+
     processor = UtxoProcessor(client, NetworkId(TESTNET_ID))
     await processor.start()
 
     context = UtxoContext(processor)
     await context.track_addresses([source_address])
+
+    balance = context.balance
+    if balance is None:
+        print("Balance is not available yet.")
+        await processor.stop()
+        await client.disconnect()
+        return
+
+    min_required = kaspa_to_sompi(0.2) + 1_000
+    if balance.mature <= min_required:
+        print("Not enough funds to send transaction.")
+        await processor.stop()
+        await client.disconnect()
+        return
 
     if context.mature_length == 0:
         print("No mature UTXOs for this address. Fund it first.")
@@ -38,8 +58,8 @@ async def main():
     generator = Generator(
         entries=context,
         change_address=source_address,
-        outputs=[{"address": source_address, "amount": kaspa_to_sompi(1)}],
-        priority_fee=kaspa_to_sompi(1),
+        outputs=[{"address": source_address, "amount": kaspa_to_sompi(0.2)}],
+        priority_fee=kaspa_to_sompi(0.0001),
     )
 
     for pending_tx in generator:
