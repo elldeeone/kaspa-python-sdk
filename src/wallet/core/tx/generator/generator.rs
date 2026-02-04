@@ -132,14 +132,14 @@ impl PyGenerator {
     /// Raises:
     ///     Exception: If generator creation fails.
     #[new]
-    #[pyo3(signature = (network_id=None, *, entries, change_address, outputs=None, payload=None, fee_rate=None, priority_fee=None, priority_entries=None, sig_op_count=None, minimum_signatures=None))]
+    #[pyo3(signature = (entries, change_address, network_id=None, outputs=None, payload=None, fee_rate=None, priority_fee=None, priority_entries=None, sig_op_count=None, minimum_signatures=None))]
     pub fn ctor(
-        network_id: Option<PyNetworkId>,
         #[gen_stub(override_type(type_repr = "UtxoEntries | UtxoContext"))] entries: Bound<
             '_,
             PyAny,
         >,
         change_address: PyAddress,
+        network_id: Option<PyNetworkId>,
         outputs: Option<PyOutputs>,
         payload: Option<PyBinary>,
         fee_rate: Option<f64>,

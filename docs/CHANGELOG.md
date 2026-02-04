@@ -16,7 +16,6 @@
 - `from_dict()` method for `Transaction`, `TransactionInput`, `TransactionOutput`, `TransactionOutpoint`, and `UtxoEntry`.
 - `UtxoProcessor` and `UtxoContext` bindings for UTXO tracking and mature range access.
 - `UtxoProcessor` maturity setters (`set_coinbase_transaction_maturity_daa`, `set_user_transaction_maturity_daa`).
-- `Generator`, `create_transactions`, and `estimate_transactions` now accept `UtxoContext` entries (network_id optional for context inputs).
 - `UtxoContext.pending()` for pending UTXO access (implemented via processor pending map; exact snapshot parity would require rusty-kaspa exposure).
 
 ### Changed
@@ -28,12 +27,14 @@
 - All setters changed to use consistent `value` for parameter name.
 - `PrivateKeyGenerator` constructor accepts `xprv` parameter as both a `str` or `XPrv` instance now.
 - `PublicKeyGenerator.from_master_xprv()` accepts `xprv` parameter as both a `str` or `XPrv` instance now.
+- `Generator`, `create_transactions`, and `estimate_transactions` now accept `UtxoContext` entries (network_id optional for context inputs).
 - Python 3.9 is no longer supported. Minimum supported version is now 3.10.
 
 ### Fixed
 
 ### Breaking Changes
 - Python 3.9 is no longer supported. Minimum supported version is now 3.10.
+- `Generator`, `create_transactions`, and `estimate_transactions` reordered parameters to keep required arguments first (entries, change_address, network_id optional). Positional callers must update.
 
 ## [1.0.1.post2] - 2025-11-13
 ### Added
