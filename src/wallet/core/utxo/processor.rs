@@ -41,6 +41,39 @@ impl PyUtxoProcessor {
         &self.processor
     }
 
+    fn normalize_event_payload(
+        py: Python,
+        event_type: EventKind,
+        event: &Bound<PyDict>,
+    ) -> PyResult<()> {
+        // WASM side uses `to_js_value()` which always emits `data` for some events
+        // (e.g. TransactionRecordNotification), but unit variants may omit it.
+        if event.get_item("data")?.is_none() {
+            event.set_item("data", py.None())?;
+            return Ok(());
+        }
+
+        // Align to WASM `Events::to_js_value()` which flattens transaction record events
+        // to `{ type, data: TransactionRecord }` (not `{ type, data: { record } }`).
+        match event_type {
+            EventKind::Pending
+            | EventKind::Reorg
+            | EventKind::Stasis
+            | EventKind::Maturity
+            | EventKind::Discovery => {
+                if let Some(data_any) = event.get_item("data")?
+                    && let Ok(data_dict) = data_any.cast::<PyDict>()
+                    && let Some(record) = data_dict.get_item("record")?
+                {
+                    event.set_item("data", record)?;
+                }
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
+
     fn notification_callbacks(&self, event: EventKind) -> Option<Vec<PyCallback>> {
         let notification_callbacks = self.callbacks.lock().unwrap();
         let all = notification_callbacks.get(&EventKind::All).cloned();
@@ -56,9 +89,9 @@ impl PyUtxoProcessor {
         }
     }
 
-    fn start_notification_task(&self, py: Python) -> PyResult<()> {
+    fn start_notification_task(&self, py: Python) -> PyResult<bool> {
         if self.notification_task.load(Ordering::SeqCst) {
-            return Ok(());
+            return Ok(false);
         }
         self.notification_task.store(true, Ordering::SeqCst);
 
@@ -97,8 +130,12 @@ impl PyUtxoProcessor {
                                                 }
                                             };
 
-                                            if event.get_item("data")?.is_none() {
-                                                event.set_item("data", py.None())?;
+                                            if let Err(err) = Self::normalize_event_payload(py, event_type, event) {
+                                                log_error!(
+                                                    "UtxoProcessor: failed to normalize event payload for `{}`: {}",
+                                                    event_type,
+                                                    err
+                                                );
                                             }
 
                                             if let Err(err) = handler.execute(py, (*event).clone()) {
@@ -138,7 +175,7 @@ impl PyUtxoProcessor {
             Python::attach(|_| Ok(()))
         });
 
-        Ok(())
+        Ok(true)
     }
 
     async fn stop_notification_task(
@@ -232,10 +269,12 @@ impl PyUtxoProcessor {
     fn start<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let processor = self.processor.clone();
         let slf = self.clone();
-        self.start_notification_task(py)?;
+        let notification_task_started = self.start_notification_task(py)?;
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             if let Err(err) = processor.start().await {
-                slf.stop_notification_task().await.ok();
+                if notification_task_started {
+                    slf.stop_notification_task().await.ok();
+                }
                 return Err(PyException::new_err(err.to_string()));
             }
             Ok(())
@@ -381,20 +420,6 @@ impl PyUtxoProcessor {
         }
 
         let targets = parse_event_targets(event_or_callback)?;
-        if targets.contains(&EventKind::All) {
-            match callback {
-                Some(callback) => {
-                    for handlers in callbacks.values_mut() {
-                        handlers
-                            .retain(|entry| entry.callback.as_ref().as_ptr() != callback.as_ptr());
-                    }
-                }
-                None => {
-                    callbacks.clear();
-                }
-            }
-            return Ok(());
-        }
 
         match callback {
             Some(callback) => {
