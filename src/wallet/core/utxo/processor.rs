@@ -104,10 +104,15 @@ impl PyUtxoProcessor {
         let this = self.clone();
 
         let fut = async move {
+            let mut shutdown_requested = false;
             loop {
+                if shutdown_requested && channel.receiver.is_empty() {
+                    break;
+                }
+
                 select_biased! {
                     _ = ctl_receiver.recv().fuse() => {
-                        break;
+                        shutdown_requested = true;
                     }
                     msg = channel.receiver.recv().fuse() => {
                         match msg {
