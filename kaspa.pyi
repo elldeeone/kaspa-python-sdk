@@ -2771,6 +2771,9 @@ class UtxoProcessor:
             *args: Additional arguments to pass to callback.
             **kwargs: Additional keyword arguments to pass to callback.
         
+        Returns:
+            None
+        
         Notes:
             Callback will be invoked as: callback(*args, event, **kwargs)
             Where event is a dict like: {"type": str, "data": ...}
@@ -2782,10 +2785,16 @@ class UtxoProcessor:
         Args:
             event_or_callback: Event target as string (kebab-case), a list of strings, "*" / "all", or a callback (remove from all events).
             callback: Specific callback to remove, or None to remove all callbacks for the event target(s).
+        
+        Returns:
+            None
         """
     def remove_all_event_listeners(self) -> None:
         r"""
         Remove all registered event listeners.
+        
+        Returns:
+            None
         """
 
 @typing.final
