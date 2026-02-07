@@ -32,6 +32,7 @@
 - Python 3.9 is no longer supported. Minimum supported version is now 3.10.
 
 ### Fixed
+- `kaspa.pyi`: add overloads for `UtxoProcessor.add_event_listener` / `remove_event_listener` (typing only).
 
 ### Breaking Changes
 - Python 3.9 is no longer supported. Minimum supported version is now 3.10.
